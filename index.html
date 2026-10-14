@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0e17">
+<title>Оптимизация комбинированного манёвра</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <div class="stage">
+    <canvas id="canvas"></canvas>
+    <div class="hud">
+      <div class="hud-item">
+        <span class="hud-label">Скорость</span>
+        <span id="hud-speed" class="hud-value">7.673</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">Время</span>
+        <span id="hud-time" class="hud-value">0.0 с</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">ΔV</span>
+        <span id="hud-dv" class="hud-value">0 м/с</span>
+      </div>
+    </div>
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <div class="panel">
+    <!-- ЭКРАН 1: ПАРАМЕТРЫ МИССИИ -->
+    <div id="screen-start" class="screen active">
+      <h1>Параметры миссии</h1>
+      <p class="lead">Учебная упрощённая модель. Настройте цель и запас топлива, затем попробуйте её достичь.</p>
+
+      <div class="field">
+        <div class="field-head">
+          <label for="tgt-apogee">Целевой апогей</label>
+          <span id="val-apogee" class="field-val">800 км</span>
+        </div>
+        <input type="range" id="tgt-apogee" min="300" max="1500" step="50" value="800">
+      </div>
+
+      <div class="field">
+        <div class="field-head">
+          <label for="tgt-inc">Целевое наклонение</label>
+          <span id="val-inc" class="field-val">5.0°</span>
+        </div>
+        <input type="range" id="tgt-inc" min="0" max="10" step="0.5" value="5">
+      </div>
+
+      <div class="field">
+        <div class="field-head">
+          <label for="fuel-budget">Запас топлива (по ΔV)</label>
+          <span id="val-fuel" class="field-val">1000 м/с</span>
+        </div>
+        <input type="range" id="fuel-budget" min="300" max="3000" step="50" value="1000">
+      </div>
+
+      <div class="field">
+        <div class="field-head">
+          <label for="isp">Удельный импульс двигателя (Isp)</label>
+          <span id="val-isp" class="field-val">300 с</span>
+        </div>
+        <input type="range" id="isp" min="200" max="400" step="10" value="300">
+      </div>
+
+      <p class="hint">Начальная орбита: круговая 400 км, наклонение 0°. Топливо задаётся как доступный запас ΔV. Isp влияет только на показ израсходованной массы топлива (учебная оценка).</p>
+
+      <button id="btn-next" class="btn btn-primary">Далее</button>
+    </div>
+
+    <!-- ЭКРАН 2: СТРАТЕГИЯ И ИМПУЛЬСЫ -->
+    <div id="screen-setup" class="screen">
+      <h2>Стратегия манёвра</h2>
+      <div id="target-info" class="target-info"></div>
+
+      <div class="mode-toggle" role="tablist" aria-label="Стратегия">
+        <button class="mode-btn active" data-mode="combined" role="tab" aria-selected="true">Совмещённый</button>
+        <button class="mode-btn" data-mode="separate" role="tab" aria-selected="false">Раздельный</button>
+      </div>
+
+      <p id="mode-hint" class="hint"></p>
+
+      <div class="field">
+        <div class="field-head">
+          <label for="inp-prog" id="lbl-prog">Продольная составляющая ΔV</label>
+          <span id="val-prog" class="field-val">0 м/с</span>
+        </div>
+        <div class="row">
+          <input type="range" id="inp-prog" min="0" max="500" step="5" value="0">
+          <input type="number" id="num-prog" min="0" max="500" step="5" value="0" inputmode="numeric">
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-head">
+          <label for="inp-plane" id="lbl-plane">Боковая составляющая ΔV</label>
+          <span id="val-plane" class="field-val">0 м/с</span>
+        </div>
+        <div class="row">
+          <input type="range" id="inp-plane" min="0" max="1500" step="10" value="0">
+          <input type="number" id="num-plane" min="0" max="1500" step="10" value="0" inputmode="numeric">
+        </div>
+      </div>
+
+      <div class="readout">
+        <div class="ro-row"><span>Формула ΔV</span><b id="ro-formula">√(A² + B²)</b></div>
+        <div class="ro-row"><span>Суммарный ΔV</span><b id="ro-total">0 м/с</b></div>
+        <div class="ro-row"><span>Остаток топлива</span><b id="ro-fuel">1000 м/с</b></div>
+        <div class="ro-row"><span>Прогноз апогея</span><b id="ro-apogee">400 км</b></div>
+        <div class="ro-row"><span>Прогноз наклонения</span><b id="ro-inc">0.00°</b></div>
+        <div class="ro-row"><span>Израсходовано массы</span><b id="ro-mass">0 кг</b></div>
+      </div>
+
+      <p class="hint">Управление: ползунки — пальцем или мышью, стрелки ← → на клавиатуре. Enter — «Запуск».</p>
+
+      <div class="btn-row">
+        <button id="btn-back" class="btn btn-secondary">Цель</button>
+        <button id="btn-launch" class="btn btn-primary">Запуск</button>
+      </div>
+    </div>
+
+    <!-- ЭКРАН 3: ПОЛЁТ -->
+    <div id="screen-flying" class="screen">
+      <h2>Манёвр выполняется</h2>
+      <p class="hint" id="flying-hint">Следите за траекторией и приборами.</p>
+      <div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
+    </div>
+
+    <!-- ЭКРАН 4: ИТОГ -->
+    <div id="screen-result" class="screen">
+      <h2 id="result-title">Результат</h2>
+      <div id="result-body"></div>
+      <div class="btn-row">
+        <button id="btn-restart" class="btn btn-primary">Заново</button>
+        <button id="btn-new" class="btn btn-secondary">Новая миссия</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
